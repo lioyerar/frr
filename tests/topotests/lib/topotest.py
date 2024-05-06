@@ -1296,6 +1296,8 @@ def fix_netns_limits(ns):
 
     sysctl_assure(ns, "net.ipv4.conf.all.ignore_routes_with_linkdown", 1)
     sysctl_assure(ns, "net.ipv6.conf.all.ignore_routes_with_linkdown", 1)
+    sysctl_assure(ns, "net.ipv4.conf.default.ignore_routes_with_linkdown", 1)
+    sysctl_assure(ns, "net.ipv6.conf.default.ignore_routes_with_linkdown", 1)
 
     # igmp
     sysctl_atleast(ns, "net.ipv4.igmp_max_memberships", 1000)
@@ -2181,12 +2183,16 @@ class Router(Node):
                         daemon,
                         error.returncode,
                         error.cmd,
-                        '\n:stdout: "{}"'.format(error.stdout.strip())
-                        if error.stdout
-                        else "",
-                        '\n:stderr: "{}"'.format(error.stderr.strip())
-                        if error.stderr
-                        else "",
+                        (
+                            '\n:stdout: "{}"'.format(error.stdout.strip())
+                            if error.stdout
+                            else ""
+                        ),
+                        (
+                            '\n:stderr: "{}"'.format(error.stderr.strip())
+                            if error.stderr
+                            else ""
+                        ),
                     )
                 else:
                     logger.debug("%s: %s %s started", self, self.routertype, daemon)

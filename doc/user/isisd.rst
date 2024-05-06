@@ -123,7 +123,7 @@ ISIS Timer
    Set LSP refresh interval in seconds, globally, for an area (level-1) or a
    domain (level-2).
 
-.. clicmd:: max-lsp-lifetime [level-1 | level-2] (360-65535)
+.. clicmd:: max-lsp-lifetime [level-1 | level-2] (350-65535)
 
    Set LSP maximum LSP lifetime in seconds, globally, for an area (level-1) or
    a domain (level-2).
@@ -301,7 +301,7 @@ Showing ISIS information
 
    Show summary information about ISIS.
 
-.. clicmd:: show isis hostname
+.. clicmd:: show isis [vrf <NAME|all>] hostname
 
    Show information about ISIS node.
 
@@ -320,17 +320,17 @@ Showing ISIS information
    Show the ISIS database globally, for a specific LSP id without or with
    details.
 
-.. clicmd:: show isis topology [level-1|level-2] [algorithm [(128-255)]]
+.. clicmd:: show isis [vrf <NAME|all>] topology [level-1|level-2] [algorithm [(128-255)]]
 
    Show topology IS-IS paths to Intermediate Systems, globally, in area
    (level-1) or domain (level-2).
 
-.. clicmd:: show isis route [level-1|level-2] [prefix-sid|backup] [algorithm [(128-255)]]
+.. clicmd:: show isis [vrf <NAME|all>] route [level-1|level-2] [prefix-sid|backup] [algorithm [(128-255)]]
 
    Show the ISIS routing table, as determined by the most recent SPF
    calculation.
 
-.. clicmd:: show isis fast-reroute summary [level-1|level-2]
+.. clicmd:: show isis [vrf <NAME|all>] fast-reroute summary [level-1|level-2]
 
    Show information about the number of prefixes having LFA protection,
    and network-wide LFA coverage.
@@ -634,25 +634,13 @@ Debugging ISIS
 
    IS-IS Adjacency related packets.
 
-.. clicmd:: debug isis checksum-errors
-
-   IS-IS LSP checksum errors.
-
 .. clicmd:: debug isis events
 
    IS-IS Events.
 
-.. clicmd:: debug isis local-updates
-
-   IS-IS local update packets.
-
 .. clicmd:: debug isis packet-dump
 
    IS-IS packet dump.
-
-.. clicmd:: debug isis protocol-errors
-
-   IS-IS LSP protocol errors.
 
 .. clicmd:: debug isis route-events
 
@@ -663,11 +651,8 @@ Debugging ISIS
    IS-IS CSNP/PSNP packets.
 
 .. clicmd:: debug isis spf-events
-.. clicmd:: debug isis spf-statistics
-.. clicmd:: debug isis spf-triggers
 
-   IS-IS Shortest Path First Events, Timing and Statistic Data and triggering
-   events.
+   IS-IS Shortest Path First Events.
 
 .. clicmd:: debug isis update-packets
 
@@ -846,7 +831,7 @@ A simple vrf example:
 
    !
    interface eth0 vrf RED
-    ip router isis FOO vrf RED
+    ip router isis FOO
     isis network point-to-point
     isis circuit-type level-2-only
    !

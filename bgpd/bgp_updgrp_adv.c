@@ -328,15 +328,16 @@ static void subgrp_show_adjq_vty(struct update_subgroup *subgrp,
 			}
 			if ((flags & UPDWALK_FLAGS_ADVQUEUE) && adj->adv &&
 			    adj->adv->baa) {
-				route_vty_out_tmp(
-					vty, dest, dest_p, adj->adv->baa->attr,
-					SUBGRP_SAFI(subgrp), 0, NULL, false);
+				route_vty_out_tmp(vty, bgp, dest, dest_p,
+						  adj->adv->baa->attr,
+						  SUBGRP_SAFI(subgrp), 0, NULL,
+						  false);
 				output_count++;
 			}
 			if ((flags & UPDWALK_FLAGS_ADVERTISED) && adj->attr) {
-				route_vty_out_tmp(vty, dest, dest_p, adj->attr,
-						  SUBGRP_SAFI(subgrp), 0, NULL,
-						  false);
+				route_vty_out_tmp(vty, bgp, dest, dest_p,
+						  adj->attr, SUBGRP_SAFI(subgrp),
+						  0, NULL, false);
 				output_count++;
 			}
 		}
@@ -532,7 +533,7 @@ bool bgp_adj_out_set_subgroup(struct bgp_dest *dest,
 	struct peer *adv_peer;
 	struct peer_af *paf;
 	struct bgp *bgp;
-	uint32_t attr_hash = attrhash_key_make(attr);
+	uint32_t attr_hash = 0;
 
 	peer = SUBGRP_PEER(subgrp);
 	afi = SUBGRP_AFI(subgrp);
@@ -567,9 +568,11 @@ bool bgp_adj_out_set_subgroup(struct bgp_dest *dest,
 	 * the route wasn't changed actually.
 	 * Do not suppress BGP UPDATES for route-refresh.
 	 */
-	if (CHECK_FLAG(bgp->flags, BGP_FLAG_SUPPRESS_DUPLICATES)
-	    && !CHECK_FLAG(subgrp->sflags, SUBGRP_STATUS_FORCE_UPDATES)
-	    && adj->attr_hash == attr_hash) {
+	if (likely(CHECK_FLAG(bgp->flags, BGP_FLAG_SUPPRESS_DUPLICATES)))
+		attr_hash = attrhash_key_make(attr);
+
+	if (!CHECK_FLAG(subgrp->sflags, SUBGRP_STATUS_FORCE_UPDATES) &&
+	    attr_hash && adj->attr_hash == attr_hash) {
 		if (BGP_DEBUG(update, UPDATE_OUT)) {
 			char attr_str[BUFSIZ] = {0};
 

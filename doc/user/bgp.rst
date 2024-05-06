@@ -425,6 +425,11 @@ Route Selection
 
    Disabled by default.
 
+.. clicmd:: bgp bestpath med missing-as-worst
+
+   If the paths MED value is missing and this command is configured
+   then treat it as the worse possible value that it can be.
+
 .. clicmd:: maximum-paths (1-128)
 
    Sets the maximum-paths value used for ecmp calculations for this
@@ -1059,7 +1064,7 @@ BGP GR Global Mode Commands
    This command will enable BGP graceful restart functionality at the global
    level.
 
-.. clicmd:: bgp graceful-restart disable
+.. clicmd:: bgp graceful-restart-disable
 
    This command will disable both the functionality graceful restart and helper
    mode.
@@ -1329,7 +1334,14 @@ OSPFv3 into ``address-family ipv4 unicast`` as OSPFv3 supports IPv6.
 
 .. clicmd:: redistribute <babel|connected|eigrp|isis|kernel|openfabric|ospf|ospf6|rip|ripng|sharp|static> [metric (0-4294967295)] [route-map WORD]
 
-Redistribute routes from other protocols into BGP.
+   Redistribute routes from other protocols into BGP.
+   
+   Note - When redistributing a static route, or any better Admin Distance route,
+   into BGP for which the same path is learned dynamically from another BGP
+   speaker, if the redistribute path is more preferred from a BGP Best Path
+   standpoint than the dynamically learned path, then BGP will not export
+   the best path to Zebra(RIB) for installation into the routing table,
+   unless BGP receives the path before the static route is created.
 
 .. clicmd:: redistribute <table|table-direct> (1-65535)] [metric (0-4294967295)] [route-map WORD]
 
@@ -1559,6 +1571,15 @@ Configuring Peers
    Older versions have the implementation where extended community bandwidth
    value is carried encoded as uint32. To enable backward compatibility we
    need to disable IEEE floating-point encoding option per-peer.
+
+.. clicmd:: neighbor PEER extended-link-bandwidth
+
+   By default bandwidth in extended communities is carried encoded as IEEE
+   floating-point format, and is limited to maximum of 25 Gbps.
+
+   Enabling this parameter, you can use the bandwidth of to 4294967295 Mbps.
+
+   This is disabled by default.
 
 .. clicmd:: neighbor PEER enforce-first-as
 

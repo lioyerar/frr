@@ -478,7 +478,7 @@ struct bgp {
 	 * factor (e.g., number of multipaths for the prefix)
 	 * Value is in Mbps
 	 */
-	uint32_t lb_ref_bw;
+	uint64_t lb_ref_bw;
 #define BGP_LINK_BW_REF_BW                1
 
 	/* BGP flags. */
@@ -530,6 +530,7 @@ struct bgp {
 #define BGP_FLAG_SOFT_VERSION_CAPABILITY (1ULL << 35)
 #define BGP_FLAG_ENFORCE_FIRST_AS (1ULL << 36)
 #define BGP_FLAG_DYNAMIC_CAPABILITY (1ULL << 37)
+#define BGP_FLAG_VNI_DOWN		 (1ULL << 38)
 
 	/* BGP default address-families.
 	 * New peers inherit enabled afi/safis from bgp instance.
@@ -1479,6 +1480,7 @@ struct peer {
 #define PEER_FLAG_CAPABILITY_SOFT_VERSION (1ULL << 36)
 #define PEER_FLAG_CAPABILITY_FQDN (1ULL << 37)  /* fqdn capability */
 #define PEER_FLAG_AS_LOOP_DETECTION (1ULL << 38) /* as path loop detection */
+#define PEER_FLAG_EXTENDED_LINK_BANDWIDTH (1ULL << 39)
 
 	/*
 	 *GR-Disabled mode means unset PEER_FLAG_GRACEFUL_RESTART
@@ -1666,6 +1668,8 @@ struct peer {
 	uint32_t stat_pfx_nh_invalid;
 	uint32_t stat_pfx_dup_withdraw;
 	uint32_t stat_upd_7606;  /* RFC7606: treat-as-withdraw */
+	uint64_t stat_pfx_loc_rib; /* RFC7854 : Number of routes in Loc-RIB */
+	uint64_t stat_pfx_adj_rib_in; /* RFC7854 : Number of routes in Adj-RIBs-In */
 
 	/* BGP state count */
 	uint32_t established; /* Established */
@@ -1970,7 +1974,6 @@ struct bgp_nlri {
 #define BGP_ATTR_LARGE_COMMUNITIES              32
 #define BGP_ATTR_OTC                            35
 #define BGP_ATTR_PREFIX_SID                     40
-#define BGP_ATTR_SRTE_COLOR                     51
 #ifdef ENABLE_BGP_VNC_ATTR
 #define BGP_ATTR_VNC                           255
 #endif

@@ -1377,7 +1377,7 @@ int bgp_global_gr_init(struct bgp *bgp)
 		/*GLOBAL_GR_cmd */	/*no_Global_GR_cmd*/
 			GLOBAL_GR,      GLOBAL_INVALID,
 		/*GLOBAL_DISABLE_cmd*//*no_Global_Disable_cmd*/
-			GLOBAL_INVALID,	GLOBAL_HELPER
+			GLOBAL_DISABLE,	GLOBAL_HELPER
 		},
 		/* GLOBAL_INVALID Mode  */
 		{
@@ -1411,13 +1411,13 @@ int bgp_peer_gr_init(struct peer *peer)
 	/* Event-> */ /* PEER_DISABLE_CMD */ /* NO_PEER_DISABLE_CMD */
 		{PEER_DISABLE, bgp_peer_gr_action }, {PEER_INVALID, NULL },
 	/* Event-> */ /* PEER_HELPER_cmd */ /* NO_PEER_HELPER_CMD */
-		{ PEER_INVALID, NULL }, {PEER_GLOBAL_INHERIT,
+		{ PEER_HELPER, NULL }, {PEER_GLOBAL_INHERIT,
 						bgp_peer_gr_action }
 	},
 	{
 	/*	PEER_GR Mode	*/
 	/* Event-> */ /* PEER_GR_CMD */ /* NO_PEER_GR_CMD */
-		{ PEER_INVALID, NULL }, { PEER_GLOBAL_INHERIT,
+		{ PEER_GR, NULL }, { PEER_GLOBAL_INHERIT,
 						bgp_peer_gr_action },
 	/* Event-> */ /* PEER_DISABLE_CMD */ /* NO_PEER_DISABLE_CMD */
 		{PEER_DISABLE, bgp_peer_gr_action }, { PEER_INVALID, NULL },
@@ -1429,7 +1429,7 @@ int bgp_peer_gr_init(struct peer *peer)
 	/* Event-> */ /* PEER_GR_CMD */ /* NO_PEER_GR_CMD */
 		{ PEER_GR, bgp_peer_gr_action }, { PEER_INVALID, NULL },
 	/* Event-> */ /* PEER_DISABLE_CMD */ /* NO_PEER_DISABLE_CMD */
-		{ PEER_INVALID, NULL }, { PEER_GLOBAL_INHERIT,
+		{ PEER_DISABLE, NULL }, { PEER_GLOBAL_INHERIT,
 						bgp_peer_gr_action },
 	/* Event-> */ /* PEER_HELPER_cmd */  /* NO_PEER_HELPER_CMD */
 		{ PEER_HELPER, bgp_peer_gr_action }, { PEER_INVALID, NULL }
@@ -1539,13 +1539,13 @@ struct peer *peer_new(struct bgp *bgp)
 	SET_FLAG(peer->sflags, PEER_STATUS_CAPABILITY_OPEN);
 
 	if (CHECK_FLAG(bgp->flags, BGP_FLAG_ENFORCE_FIRST_AS))
-		SET_FLAG(peer->flags, PEER_FLAG_ENFORCE_FIRST_AS);
+		peer_flag_set(peer, PEER_FLAG_ENFORCE_FIRST_AS);
 
 	if (CHECK_FLAG(bgp->flags, BGP_FLAG_SOFT_VERSION_CAPABILITY))
-		SET_FLAG(peer->flags, PEER_FLAG_CAPABILITY_SOFT_VERSION);
+		peer_flag_set(peer, PEER_FLAG_CAPABILITY_SOFT_VERSION);
 
 	if (CHECK_FLAG(bgp->flags, BGP_FLAG_DYNAMIC_CAPABILITY))
-		SET_FLAG(peer->flags, PEER_FLAG_DYNAMIC_CAPABILITY);
+		peer_flag_set(peer, PEER_FLAG_DYNAMIC_CAPABILITY);
 
 	SET_FLAG(peer->flags_invert, PEER_FLAG_CAPABILITY_FQDN);
 	SET_FLAG(peer->flags, PEER_FLAG_CAPABILITY_FQDN);
@@ -1853,21 +1853,31 @@ void bgp_peer_conf_if_to_su_update(struct peer_connection *connection)
 void bgp_recalculate_afi_safi_bestpaths(struct bgp *bgp, afi_t afi, safi_t safi)
 {
 	struct bgp_dest *dest, *ndest;
+	struct bgp_path_info *pi, *next;
 	struct bgp_table *table;
 
 	for (dest = bgp_table_top(bgp->rib[afi][safi]); dest;
 	     dest = bgp_route_next(dest)) {
 		table = bgp_dest_get_bgp_table_info(dest);
-		if (table != NULL) {
-			/* Special handling for 2-level routing
-			 * tables. */
-			if (safi == SAFI_MPLS_VPN || safi == SAFI_ENCAP
-			    || safi == SAFI_EVPN) {
-				for (ndest = bgp_table_top(table); ndest;
-				     ndest = bgp_route_next(ndest))
-					bgp_process(bgp, ndest, afi, safi);
-			} else
-				bgp_process(bgp, dest, afi, safi);
+
+		if (!table)
+			continue;
+
+		/* Special handling for 2-level routing
+		 * tables. */
+		if (safi == SAFI_MPLS_VPN || safi == SAFI_ENCAP
+		    || safi == SAFI_EVPN) {
+			for (ndest = bgp_table_top(table); ndest;
+			     ndest = bgp_route_next(ndest)) {
+				for (pi = bgp_dest_get_bgp_path_info(ndest);
+				     (pi != NULL) && (next = pi->next, 1);
+				     pi = next)
+					bgp_process(bgp, ndest, pi, afi, safi);
+			}
+		} else {
+			for (pi = bgp_dest_get_bgp_path_info(dest);
+			     (pi != NULL) && (next = pi->next, 1); pi = next)
+				bgp_process(bgp, dest, pi, afi, safi);
 		}
 	}
 }
@@ -4403,6 +4413,11 @@ struct peer *peer_lookup_dynamic_neighbor(struct bgp *bgp, union sockunion *su)
 		zlog_debug("%s Dynamic Neighbor added, group %s count %d",
 			   peer->host, group->name, dncount);
 
+	if (dncount == gbgp->dynamic_neighbors_limit) {
+		zlog_warn("Dynamic Neighbor %s added as last connection. Peer-group %s reached maximum listen limit %d",
+			  peer->host, group->name,
+			  gbgp->dynamic_neighbors_limit);
+	}
 	return peer;
 }
 
@@ -4589,7 +4604,7 @@ static const struct peer_flag_action peer_flag_action_list[] = {
 	{PEER_FLAG_DONT_CAPABILITY, 0, peer_change_none},
 	{PEER_FLAG_OVERRIDE_CAPABILITY, 0, peer_change_none},
 	{PEER_FLAG_STRICT_CAP_MATCH, 0, peer_change_none},
-	{PEER_FLAG_DYNAMIC_CAPABILITY, 0, peer_change_reset},
+	{PEER_FLAG_DYNAMIC_CAPABILITY, 0, peer_change_none},
 	{PEER_FLAG_DISABLE_CONNECTED_CHECK, 0, peer_change_reset},
 	{PEER_FLAG_CAPABILITY_ENHE, 0, peer_change_reset},
 	{PEER_FLAG_ENFORCE_FIRST_AS, 0, peer_change_reset_in},
@@ -4613,6 +4628,7 @@ static const struct peer_flag_action peer_flag_action_list[] = {
 	{PEER_FLAG_CAPABILITY_SOFT_VERSION, 0, peer_change_none},
 	{PEER_FLAG_CAPABILITY_FQDN, 0, peer_change_none},
 	{PEER_FLAG_AS_LOOP_DETECTION, 0, peer_change_none},
+	{PEER_FLAG_EXTENDED_LINK_BANDWIDTH, 0, peer_change_none},
 	{0, 0, 0}};
 
 static const struct peer_flag_action peer_af_flag_action_list[] = {
